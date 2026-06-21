@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stellar Smart Venues - Agentic Auditor</title>
+    <!-- Tailwind CSS for MD3 Styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PDF.js for Client-Side RAG Ingestion -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- Marked for Markdown rendering in chat -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        /* Material Design 3 Custom Touches */
+        body { font-family: system-ui, -apple-system, sans-serif; }
+        .md3-shadow { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
+        .md3-surface { background-color: #f8fafc; }
+        .md3-surface-container { background-color: #ffffff; border: 1px solid #e2e8f0; }
+        .chat-scroll::-webkit-scrollbar { width: 6px; }
+        .chat-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+        
+        /* Markdown Styles for Chat */
+        .prose p { margin-bottom: 0.75em; line-height: 1.5; }
+        .prose ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 0.75em; }
+        .prose strong { font-weight: 600; color: #0f172a; }
+        .prose h3 { font-weight: 600; font-size: 1.1em; margin-top: 1em; margin-bottom: 0.5em; }
+    </style>
+</head>
+<body class="h-screen flex flex-col md3-surface text-slate-900 overflow-hidden">
+
+    <!-- Top App Bar -->
+    <header class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shrink-0 z-10">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-100 text-blue-700 p-2 rounded-xl">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            </div>
+            <div>
+                <h1 class="text-xl font-semibold tracking-tight">Accessibility Auditor Agent</h1>
+                <p class="text-xs text-slate-500 font-medium">Phase 1: Multi-Document RAG Engine</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <!-- Framework Selector -->
+            <div class="flex items-center gap-2">
+                <label for="framework-select" class="text-sm font-medium text-slate-600">Standard:</label>
+                <select id="framework-select" class="bg-slate-50 border border-slate-200 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 outline-none">
+                    <option value="Americans with Disabilities Act (ADA)">ADA Standards</option>
+                    <option value="WCAG 2.2">WCAG 2.2</option>
+                    <option value="Dubai Universal Design Code">Dubai Universal Design Code</option>
+                </select>
+            </div>
+
+            <div class="h-6 w-px bg-slate-200 mx-2"></div>
+
+            <!-- API Key Input -->
+            <div class="relative flex items-center">
+                <input type="password" id="api-key-input" placeholder="Gemini API Key" class="pl-3 pr-10 py-2 text-sm border border-slate-200 rounded-full focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 w-48 bg-slate-50 transition-all">
+                <div id="api-status" class="absolute right-3 w-2.5 h-2.5 rounded-full bg-slate-300 transition-colors" title="API Disconnected"></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 flex overflow-hidden">
+        
+        <!-- Left Sidebar: Document Management -->
+        <aside class="w-80 bg-white border-r border-slate-200 flex flex-col shrink-0">
+            <div class="p-4 border-b border-slate-100 bg-slate-50/50">
+                <h2 class="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-3">Knowledge Base</h2>
+                
+                <input type="file" id="pdf-upload" accept="application/pdf" multiple class="hidden" onchange="handleFileUpload(event)">
+                <button onclick="document.getElementById('pdf-upload').click()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-full text-sm font-medium transition-colors flex items-center justify-center gap-2 md3-shadow">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Upload Audit PDFs
+                </button>
+            </div>
+            
+            <div id="document-list" class="flex-1 overflow-y-auto p-3 space-y-2">
+                <!-- Uploaded files will populate here -->
+                <div id="empty-state-docs" class="text-center p-6 text-slate-400 text-sm mt-4">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="mx-auto mb-2 opacity-50"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                    No documents uploaded.<br>Upload PDFs to enable client-side RAG.
+                </div>
+            </div>
+        </aside>
+
+        <!-- Central Pane: PDF Viewer -->
+        <section class="flex-1 bg-slate-100 flex flex-col relative border-r border-slate-200">
+            <div id="viewer-header" class="absolute top-0 left-0 right-0 bg-white/90 backdrop-blur-sm border-b border-slate-200 px-4 py-2 flex items-center justify-between z-10 hidden">
+                <span id="viewer-title" class="text-sm font-medium text-slate-700 truncate"></span>
+            </div>
+            <div id="viewer-container" class="w-full h-full flex items-center justify-center text-slate-400">
+                <div class="text-center">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" class="mx-auto mb-3 opacity-50"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/></svg>
+                    <p>Select a document to preview.</p>
+                </div>
+            </div>
+            <iframe id="pdf-iframe" class="w-full h-full hidden" title="PDF Viewer"></iframe>
+        </section>
+
+        <!-- Right Sidebar: Agentic Chatbot -->
+        <aside class="w-96 bg-white flex flex-col shrink-0">
+            <div class="p-4 border-b border-slate-200 bg-slate-50 flex items-center gap-2">
+                <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+                </div>
+                <div>
+                    <h2 class="text-sm font-semibold text-slate-800">Accessibility Agent</h2>
+                    <p class="text-xs text-slate-500">Grounded strictly in uploaded docs</p>
+                </div>
+            </div>
+
+            <div id="chat-history" class="flex-1 overflow-y-auto p-4 space-y-4 chat-scroll bg-white">
+                <!-- Initial greeting -->
+                <div class="flex gap-3">
+                    <div class="w-8 h-8 rounded-full bg-blue-100 shrink-0 flex items-center justify-center">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-blue-600"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/></svg>
+                    </div>
+                    <div class="bg-slate-50 border border-slate-100 rounded-2xl rounded-tl-none p-3 text-sm text-slate-700 md3-shadow">
+                        Hello! I am your AI Auditor. Please upload your venue's structural plans, policy PDFs, or previous audit reports. Once loaded, ask me for an accessibility evaluation.
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 bg-white border-t border-slate-200">
+                <form id="chat-form" onsubmit="handleChatSubmit(event)" class="relative">
+                    <textarea 
+                        id="chat-input" 
+                        rows="2"
+                        class="w-full bg-slate-50 border border-slate-300 rounded-2xl pl-4 pr-12 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none transition-shadow"
+                        placeholder="Ask for an evaluation or specific query..."
+                        onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); handleChatSubmit(event); }"
+                    ></textarea>
+                    <button type="submit" id="send-btn" class="absolute right-2 bottom-2 p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    </button>
+                </form>
+            </div>
+        </aside>
+    </main>
+
+    <script>
+        // System and State Variables
+        const apiKey = ""; // System requirement.
+        let extractedKnowledgeBase = []; 
+        let uploadedFiles = {};
+        
+        // Initialize PDF.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // Listen for API Key changes to update indicator
+        document.getElementById('api-key-input').addEventListener('input', function(e) {
+            const statusIndicator = document.getElementById('api-status');
+            if (e.target.value.trim().length > 10) {
+                statusIndicator.classList.remove('bg-slate-300', 'bg-red-500');
+                statusIndicator.classList.add('bg-green-500');
+                statusIndicator.title = "API Key Formatted";
+            } else {
+                statusIndicator.classList.remove('bg-green-500', 'bg-red-500');
+                statusIndicator.classList.add('bg-slate-300');
+                statusIndicator.title = "API Disconnected";
+            }
+        });
+
+        // Handle file uploads & extract text per page
+        async function handleFileUpload(event) {
+            const files = event.target.files;
+            if (!files.length) return;
+
+            document.getElementById('empty-state-docs').style.display = 'none';
+            const docList = document.getElementById('document-list');
+
+            for (const file of files) {
+                if (file.type !== "application/pdf") continue;
+                
+                // Add to UI state immediately as loading
+                const fileId = 'file-' + Math.random().toString(36).substr(2, 9);
+                uploadedFiles[fileId] = { file: file, name: file.name, url: URL.createObjectURL(file) };
+                
+                const docElement = document.createElement('div');
+                docElement.id = fileId;
+                docElement.className = "flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-xl cursor-pointer hover:border-blue-300 transition-colors group";
+                docElement.onclick = () => previewPDF(fileId);
+                docElement.innerHTML = `
+                    <div class="bg-red-50 text-red-500 p-2 rounded-lg shrink-0">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-slate-700 truncate">${file.name}</p>
+                        <p class="text-xs text-slate-400" id="${fileId}-status">Extracting text...</p>
+                    </div>
+                `;
+                docList.appendChild(docElement);
+
+                // Extract Text via PDF.js (Client-Side RAG Ingestion)
+                try {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+                    
+                    let docTextChunks = [];
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const textContent = await page.getTextContent();
+                        const pageText = textContent.items.map(item => item.str).join(' ');
+                        
+                        if (pageText.trim()) {
+                            // Maintain page-level metadata
+                            extractedKnowledgeBase.push({
+                                filename: file.name,
+                                page: i,
+                                text: pageText
+                            });
+                            docTextChunks.push(`Page ${i}`);
+                        }
+                    }
+                    
+                    document.getElementById(`${fileId}-status`).innerText = `Processed ${pdf.numPages} pages`;
+                    document.getElementById(`${fileId}-status`).classList.add('text-green-600');
+                    
+                    // Auto preview first uploaded doc
+                    if(Object.keys(uploadedFiles).length === 1) {
+                        previewPDF(fileId);
+                    }
+
+                } catch (err) {
+                    console.error("PDF Extraction Error:", err);
+                    document.getElementById(`${fileId}-status`).innerText = "Extraction failed";
+                    document.getElementById(`${fileId}-status`).classList.add('text-red-500');
+                }
+            }
+            
+            // Reset input so same file can be uploaded again if needed
+            event.target.value = '';
+        }
+
+        function previewPDF(fileId) {
+            const data = uploadedFiles[fileId];
+            if(!data) return;
+
+            document.getElementById('viewer-container').classList.add('hidden');
+            const iframe = document.getElementById('pdf-iframe');
+            iframe.src = data.url;
+            iframe.classList.remove('hidden');
+            
+            document.getElementById('viewer-header').classList.remove('hidden');
+            document.getElementById('viewer-title').innerText = data.name;
+        }
+
+        // --- Agentic Chat Logic ---
+
+        function appendMessage(role, text) {
+            const chatHistory = document.getElementById('chat-history');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = "flex gap-3 " + (role === 'user' ? "flex-row-reverse" : "");
+            
+            const iconHTML = role === 'user' 
+                ? `<div class="w-8 h-8 rounded-full bg-slate-200 shrink-0 flex items-center justify-center text-slate-600"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>`
+                : `<div class="w-8 h-8 rounded-full bg-blue-100 shrink-0 flex items-center justify-center text-blue-600"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/></svg></div>`;
+            
+            // Markdown rendering for AI responses
+            const contentHTML = role === 'user' 
+                ? text 
+                : marked.parse(text);
+
+            const bubbleClass = role === 'user'
+                ? "bg-blue-600 text-white rounded-2xl rounded-tr-none p-3 text-sm md3-shadow prose prose-invert max-w-[85%]"
+                : "bg-slate-50 border border-slate-100 text-slate-800 rounded-2xl rounded-tl-none p-4 text-sm md3-shadow prose prose-sm max-w-[85%] prose-headings:text-blue-800";
+
+            msgDiv.innerHTML = `
+                ${iconHTML}
+                <div class="${bubbleClass}">
+                    ${contentHTML}
+                </div>
+            `;
+            chatHistory.appendChild(msgDiv);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        function createLoadingIndicator() {
+            const chatHistory = document.getElementById('chat-history');
+            const msgDiv = document.createElement('div');
+            msgDiv.id = "loading-indicator";
+            msgDiv.className = "flex gap-3";
+            msgDiv.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-blue-100 shrink-0 flex items-center justify-center text-blue-600">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/></svg>
+                </div>
+                <div class="bg-slate-50 border border-slate-100 rounded-2xl rounded-tl-none p-4 md3-shadow flex items-center gap-2">
+                    <div class="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
+                    <div class="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                    <div class="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                </div>
+            `;
+            chatHistory.appendChild(msgDiv);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        function removeLoadingIndicator() {
+            const indicator = document.getElementById('loading-indicator');
+            if(indicator) indicator.remove();
+        }
+
+        async function handleChatSubmit(event) {
+            event.preventDefault();
+            const input = document.getElementById('chat-input');
+            const query = input.value.trim();
+            const activeKey = document.getElementById('api-key-input').value.trim() || apiKey;
+
+            if (!query) return;
+            if (!activeKey) {
+                alert("Please enter a valid Gemini API Key to proceed.");
+                return;
+            }
+
+            // Disable input while processing
+            input.value = '';
+            input.disabled = true;
+            document.getElementById('send-btn').disabled = true;
+
+            appendMessage('user', query);
+            createLoadingIndicator();
+
+            // Construct System Prompt enforcing the requested Agentic Behavior
+            const framework = document.getElementById('framework-select').value;
+            
+            // Format extracted KB strictly 
+            let knowledgeBaseText = extractedKnowledgeBase.length === 0 
+                ? "NO DOCUMENTS UPLOADED. Inform the user they must upload documents first."
+                : extractedKnowledgeBase.map(chunk => `[Source: ${chunk.filename}, Page ${chunk.page}]\n${chunk.text}\n---\n`).join('\n');
+
+            const systemPrompt = `
+You are an expert, Agentic Multi-Document Research and Q&A Assistant tailored specifically for Venue Accessibility Auditing.
+You are currently evaluating the venue against this standard: ${framework}.
+
+CRITICAL RULES YOU MUST FOLLOW EXACTLY:
+1. GROUNDING: Your knowledge base consists ONLY of the documents provided below. Do NOT hallucinate or use outside knowledge. If the answer is not in the documents, state so clearly.
+2. CITATION: You MUST explicitly cite the source document name and page number for EVERY claim, observation, or metric you output. (Format example: "According to [Filename, Page X]...")
+3. CATEGORIZATION: Whenever the user asks for an accessibility evaluation or audit, you MUST explicitly categorize your findings into these four headings:
+   - Physical Accessibility
+   - Sensory Accessibility
+   - Cognitive Accessibility
+   - Digital Accessibility
+4. PROACTIVE SITE INSPECTION (AGENTIC BEHAVIOR): At the end of every evaluation response, you MUST automatically generate a section titled "Unanswered Audit Questions requiring site inspection". In this section, list specific, actionable questions regarding accessibility data that is missing from the provided documents but is critical for a complete audit under the selected framework.
+
+DOCUMENT KNOWLEDGE BASE:
+${knowledgeBaseText}
+`;
+
+            const payload = {
+                contents: [{ parts: [{ text: query }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] }
+            };
+
+            try {
+                // Implement exponential backoff as requested
+                const maxRetries = 5;
+                const delays = [1000, 2000, 4000, 8000, 16000];
+                let attempt = 0;
+                let data = null;
+
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${activeKey}`;
+
+                while (attempt < maxRetries) {
+                    try {
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        
+                        if (!response.ok) {
+                            if (response.status === 400 || response.status === 403) {
+                                // Don't retry auth or bad request errors
+                                throw new Error(`API Error: ${response.status} - Check API Key or Request format.`);
+                            }
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        data = await response.json();
+                        break; // Success
+                    } catch (error) {
+                        attempt++;
+                        console.warn(`API attempt ${attempt} failed: ${error.message}`);
+                        if (attempt >= maxRetries) throw error;
+                        await new Promise(resolve => setTimeout(resolve, delays[attempt - 1]));
+                    }
+                }
+
+                removeLoadingIndicator();
+                
+                if (data && data.candidates && data.candidates[0].content) {
+                    const responseText = data.candidates[0].content.parts[0].text;
+                    appendMessage('ai', responseText);
+                } else {
+                    appendMessage('ai', "Error parsing the response from the AI agent. Please try again.");
+                }
+
+            } catch (error) {
+                removeLoadingIndicator();
+                appendMessage('ai', `**Connection Error:** ${error.message}\nPlease ensure your API key is correct and you have network connectivity.`);
+                
+                // Show red indicator on failure
+                const statusIndicator = document.getElementById('api-status');
+                statusIndicator.classList.remove('bg-green-500', 'bg-slate-300');
+                statusIndicator.classList.add('bg-red-500');
+                statusIndicator.title = "API Error";
+            } finally {
+                input.disabled = false;
+                document.getElementById('send-btn').disabled = false;
+                input.focus();
+            }
+        }
+    </script>
+</body>
+</html>
