@@ -37,7 +37,7 @@
             </div>
             <div>
                 <h1 class="text-xl font-semibold tracking-tight">Accessibility Auditor Agent</h1>
-                <p class="text-xs text-slate-500 font-medium">Phase 1: Multi-Document RAG Engine</p>
+                <p class="text-xs text-slate-500 font-medium">Phase 2: RAG Engine & Dashboard</p>
             </div>
         </div>
 
@@ -101,7 +101,7 @@
         </section>
 
         <!-- Right Sidebar: Agentic Chatbot -->
-        <aside class="w-96 bg-white flex flex-col shrink-0">
+        <aside class="w-[450px] bg-white flex flex-col shrink-0">
             <div class="p-4 border-b border-slate-200 bg-slate-50 flex items-center gap-2">
                 <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
@@ -118,8 +118,8 @@
                     <div class="w-8 h-8 rounded-full bg-blue-100 shrink-0 flex items-center justify-center">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-blue-600"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/></svg>
                     </div>
-                    <div class="bg-slate-50 border border-slate-100 rounded-2xl rounded-tl-none p-3 text-sm text-slate-700 md3-shadow">
-                        Hello! I am your AI Auditor. Please upload your venue's structural plans, policy PDFs, or previous audit reports. Once loaded, ask me for an accessibility evaluation.
+                    <div class="bg-slate-50 border border-slate-100 rounded-2xl rounded-tl-none p-3 text-sm text-slate-700 md3-shadow w-full max-w-[95%]">
+                        Hello! I am your AI Auditor. Please upload your venue's structural plans, policy PDFs, or previous audit reports. Once loaded, ask me for an accessibility evaluation to generate a Scorecard.
                     </div>
                 </div>
             </div>
@@ -248,7 +248,7 @@
             document.getElementById('viewer-title').innerText = data.name;
         }
 
-        // --- Agentic Chat Logic ---
+        // --- Agentic Chat Logic & UI Parsing ---
 
         function appendMessage(role, text) {
             const chatHistory = document.getElementById('chat-history');
@@ -259,14 +259,108 @@
                 ? `<div class="w-8 h-8 rounded-full bg-slate-200 shrink-0 flex items-center justify-center text-slate-600"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>`
                 : `<div class="w-8 h-8 rounded-full bg-blue-100 shrink-0 flex items-center justify-center text-blue-600"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/></svg></div>`;
             
-            // Markdown rendering for AI responses
-            const contentHTML = role === 'user' 
-                ? text 
-                : marked.parse(text);
+            let contentHTML = "";
+
+            if (role === 'ai') {
+                try {
+                    // Try to parse Phase 2 structured JSON
+                    const data = JSON.parse(text);
+                    
+                    // Render conversational message
+                    contentHTML += `<div class="prose prose-sm max-w-none prose-headings:text-blue-800 mb-4">${marked.parse(data.message || "")}</div>`;
+
+                    // Render Dashboard if it's an evaluation
+                    if (data.is_evaluation && data.scorecard) {
+                        let categoriesHTML = data.scorecard.categories.map(cat => {
+                            let icon = cat.status === 'Compliant' ? '✅' : (cat.status === 'Partial' ? '⚠️' : '❌');
+                            let color = cat.status === 'Compliant' ? 'text-green-600' : (cat.status === 'Partial' ? 'text-amber-500' : 'text-red-600');
+                            return `
+                            <div class="flex justify-between items-center text-sm p-2 bg-slate-50 rounded-lg border border-slate-100">
+                                <span class="font-medium text-slate-700">${cat.name}</span>
+                                <span class="${color} font-bold flex items-center gap-1">${icon} ${cat.score}%</span>
+                            </div>`;
+                        }).join('');
+
+                        contentHTML += `
+                            <div class="bg-white border border-slate-200 rounded-2xl p-4 mb-4 md3-shadow">
+                                <h3 class="text-base font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-blue-600"><path d="M12 20v-6M6 20V10M18 20V4"/></svg>
+                                    Accessibility Scorecard
+                                </h3>
+                                <div class="flex items-center gap-4 mb-4 bg-blue-50 p-3 rounded-xl">
+                                    <div class="text-4xl font-black text-blue-600">${data.scorecard.overall_score}%</div>
+                                    <div class="text-sm text-slate-600 leading-tight font-medium">Overall<br>Compliance</div>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
+                                    ${categoriesHTML}
+                                </div>
+                            </div>
+                        `;
+
+                        // Render Remediation Roadmap
+                        if (data.roadmap && data.roadmap.length > 0) {
+                            let roadmapRows = data.roadmap.map(item => {
+                                let sevColor = item.severity === 'High' ? 'bg-red-100 text-red-700' : (item.severity === 'Medium' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700');
+                                return `
+                                <tr class="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                                    <td class="py-3 px-2 text-xs font-medium text-slate-800">${item.issue}</td>
+                                    <td class="py-3 px-2 text-xs"><span class="px-2 py-1 rounded-full font-semibold ${sevColor}">${item.severity}</span></td>
+                                    <td class="py-3 px-2 text-xs text-slate-500 whitespace-nowrap">Pg ${item.page_ref}</td>
+                                    <td class="py-3 px-2 text-xs font-medium text-slate-700">${item.action_plan}</td>
+                                </tr>`;
+                            }).join('');
+
+                            contentHTML += `
+                                <div class="bg-white border border-slate-200 rounded-2xl p-4 mb-4 md3-shadow overflow-x-auto">
+                                    <h3 class="text-base font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-red-500"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                        Remediation Roadmap
+                                    </h3>
+                                    <table class="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr class="border-b-2 border-slate-200 text-xs text-slate-500 uppercase tracking-wider">
+                                                <th class="pb-2 px-2 font-semibold">Issue</th>
+                                                <th class="pb-2 px-2 font-semibold">Severity</th>
+                                                <th class="pb-2 px-2 font-semibold">Ref</th>
+                                                <th class="pb-2 px-2 font-semibold">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${roadmapRows}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            `;
+                        }
+                    }
+
+                    // Render Unanswered Questions (Site Inspection needed)
+                    if (data.unanswered_questions && data.unanswered_questions.length > 0) {
+                        let qs = data.unanswered_questions.map(q => `<li>${q}</li>`).join('');
+                        contentHTML += `
+                            <div class="bg-blue-50 border border-blue-100 rounded-2xl p-4 md3-shadow">
+                                <h4 class="text-sm font-bold text-blue-800 mb-2 flex items-center gap-2">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                                    Missing Info (Site Inspection Needed)
+                                </h4>
+                                <ul class="list-disc pl-5 text-sm text-blue-900 space-y-1">
+                                    ${qs}
+                                </ul>
+                            </div>
+                        `;
+                    }
+                } catch(e) {
+                    // Fallback to basic markdown if response isn't JSON
+                    contentHTML = `<div class="prose prose-sm max-w-none prose-headings:text-blue-800">${marked.parse(text)}</div>`;
+                }
+            } else {
+                // User input rendering
+                contentHTML = text;
+            }
 
             const bubbleClass = role === 'user'
                 ? "bg-blue-600 text-white rounded-2xl rounded-tr-none p-3 text-sm md3-shadow prose prose-invert max-w-[85%]"
-                : "bg-slate-50 border border-slate-100 text-slate-800 rounded-2xl rounded-tl-none p-4 text-sm md3-shadow prose prose-sm max-w-[85%] prose-headings:text-blue-800";
+                : "bg-slate-50 border border-slate-100 text-slate-800 rounded-2xl rounded-tl-none p-4 text-sm md3-shadow w-full max-w-[95%]";
 
             msgDiv.innerHTML = `
                 ${iconHTML}
@@ -322,10 +416,9 @@
             appendMessage('user', query);
             createLoadingIndicator();
 
-            // Construct System Prompt enforcing the requested Agentic Behavior
+            // Phase 2: Construct System Prompt enforcing Structured JSON Output
             const framework = document.getElementById('framework-select').value;
             
-            // Format extracted KB strictly 
             let knowledgeBaseText = extractedKnowledgeBase.length === 0 
                 ? "NO DOCUMENTS UPLOADED. Inform the user they must upload documents first."
                 : extractedKnowledgeBase.map(chunk => `[Source: ${chunk.filename}, Page ${chunk.page}]\n${chunk.text}\n---\n`).join('\n');
@@ -335,26 +428,51 @@ You are an expert, Agentic Multi-Document Research and Q&A Assistant tailored sp
 You are currently evaluating the venue against this standard: ${framework}.
 
 CRITICAL RULES YOU MUST FOLLOW EXACTLY:
-1. GROUNDING: Your knowledge base consists ONLY of the documents provided below. Do NOT hallucinate or use outside knowledge. If the answer is not in the documents, state so clearly.
-2. CITATION: You MUST explicitly cite the source document name and page number for EVERY claim, observation, or metric you output. (Format example: "According to [Filename, Page X]...")
-3. CATEGORIZATION: Whenever the user asks for an accessibility evaluation or audit, you MUST explicitly categorize your findings into these four headings:
-   - Physical Accessibility
-   - Sensory Accessibility
-   - Cognitive Accessibility
-   - Digital Accessibility
-4. PROACTIVE SITE INSPECTION (AGENTIC BEHAVIOR): At the end of every evaluation response, you MUST automatically generate a section titled "Unanswered Audit Questions requiring site inspection". In this section, list specific, actionable questions regarding accessibility data that is missing from the provided documents but is critical for a complete audit under the selected framework.
+1. GROUNDING: Your knowledge base consists ONLY of the documents provided below. Do NOT hallucinate or use outside knowledge.
+2. CITATION: You MUST explicitly cite the source document name and page number for EVERY claim, observation, or metric you output.
+3. STRUCTURED JSON OUTPUT: You MUST respond in strictly valid JSON format matching the exact schema provided below. Do NOT wrap your response in markdown code blocks like \`\`\`json. Just return the raw JSON object.
+
+JSON SCHEMA EXPECTED:
+{
+  "message": "Your conversational response and analysis, categorized into Physical, Sensory, Cognitive, and Digital Accessibility. You can use Markdown here.",
+  "is_evaluation": true, // Set to true ONLY if the user asks for an evaluation, audit, scorecard, or roadmap. Set to false for casual greetings/questions.
+  "scorecard": {
+    "overall_score": 0, // Number representing overall compliance percentage (0-100) based on findings
+    "categories": [
+      {
+         "name": "Category Name (e.g., Entrances, Washrooms, Signage)",
+         "status": "Compliant, Partial, or Non-Compliant", // MUST be one of these exactly
+         "score": 0 // Category score percentage (0-100)
+      }
+    ]
+  },
+  "roadmap": [
+    {
+      "issue": "Brief description of the barrier/issue",
+      "severity": "High, Medium, or Low", // MUST be one of these exactly
+      "page_ref": "Exact page number where the issue was found",
+      "action_plan": "Immediate, Short-Term, or Long-Term" // MUST be one of these exactly
+    }
+  ],
+  "unanswered_questions": [
+    "Specific, actionable question about missing accessibility data requiring manual site inspection"
+  ]
+}
 
 DOCUMENT KNOWLEDGE BASE:
 ${knowledgeBaseText}
 `;
 
+            // Phase 2 Payload utilizing JSON responseMimeType
             const payload = {
                 contents: [{ role: "user", parts: [{ text: query }] }],
-                systemInstruction: { role: "system", parts: [{ text: systemPrompt }] }
+                systemInstruction: { role: "system", parts: [{ text: systemPrompt }] },
+                generationConfig: {
+                    responseMimeType: "application/json"
+                }
             };
 
             try {
-                // Implement exponential backoff as requested
                 const maxRetries = 5;
                 const delays = [1000, 2000, 4000, 8000, 16000];
                 let attempt = 0;
@@ -371,7 +489,6 @@ ${knowledgeBaseText}
                         });
                         
                         if (!response.ok) {
-                            // Extract the highly specific error message generated by Google 
                             let errorMsg = `HTTP Error ${response.status}`;
                             try {
                                 const errorData = await response.json();
@@ -399,6 +516,7 @@ ${knowledgeBaseText}
                 
                 if (data && data.candidates && data.candidates[0].content) {
                     const responseText = data.candidates[0].content.parts[0].text;
+                    // Send raw JSON string to appendMessage to parse and render Dashboard
                     appendMessage('ai', responseText);
                 } else {
                     appendMessage('ai', "Error parsing the response from the AI agent. Please try again.");
@@ -408,7 +526,6 @@ ${knowledgeBaseText}
                 removeLoadingIndicator();
                 appendMessage('ai', `**Connection Error:** ${error.message}\nPlease ensure your API key is correct and you have network connectivity.`);
                 
-                // Show red indicator on failure
                 const statusIndicator = document.getElementById('api-status');
                 statusIndicator.classList.remove('bg-green-500', 'bg-slate-300');
                 statusIndicator.classList.add('bg-red-500');
