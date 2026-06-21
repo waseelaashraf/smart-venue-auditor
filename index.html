@@ -360,7 +360,7 @@ ${knowledgeBaseText}
                 let attempt = 0;
                 let data = null;
 
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${activeKey}`;
 
                 while (attempt < maxRetries) {
                     try {
@@ -380,7 +380,7 @@ ${knowledgeBaseText}
                                 }
                             } catch(e) { /* ignore parse error */ }
                             
-                            if (response.status === 400 || response.status === 401 || response.status === 403) {
+                            if (response.status === 400 || response.status === 401 || response.status === 403 || response.status === 404) {
                                 throw new Error(errorMsg);
                             }
                             throw new Error(errorMsg);
