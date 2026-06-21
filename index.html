@@ -57,7 +57,7 @@
             <!-- API Key Input -->
             <div class="relative flex items-center">
                 <input type="password" id="api-key-input" placeholder="Gemini API Key" class="pl-3 pr-10 py-2 text-sm border border-slate-200 rounded-full focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 w-48 bg-slate-50 transition-all">
-                <div id="api-status" class="absolute right-3 w-2.5 h-2.5 rounded-full bg-slate-300 transition-colors" title="API Disconnected hai"></div>
+                <div id="api-status" class="absolute right-3 w-2.5 h-2.5 rounded-full bg-slate-300 transition-colors" title="API Disconnected"></div>
             </div>
         </div>
     </header>
@@ -73,7 +73,7 @@
                 <input type="file" id="pdf-upload" accept="application/pdf" multiple class="hidden" onchange="handleFileUpload(event)">
                 <button onclick="document.getElementById('pdf-upload').click()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-full text-sm font-medium transition-colors flex items-center justify-center gap-2 md3-shadow">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    Audit PDFs Upload Karein
+                    Upload Audit PDFs
                 </button>
             </div>
             
@@ -81,7 +81,7 @@
                 <!-- Uploaded files will populate here -->
                 <div id="empty-state-docs" class="text-center p-6 text-slate-400 text-sm mt-4">
                     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="mx-auto mb-2 opacity-50"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                    Koi document upload nahi hua hai.<br>Client-side RAG enable karne ke liye PDFs upload karein.
+                    No documents uploaded.<br>Upload PDFs to enable client-side RAG.
                 </div>
             </div>
         </aside>
@@ -94,7 +94,7 @@
             <div id="viewer-container" class="w-full h-full flex items-center justify-center text-slate-400">
                 <div class="text-center">
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" class="mx-auto mb-3 opacity-50"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/></svg>
-                    <p>Preview dekhne ke liye document chunein.</p>
+                    <p>Select a document to preview.</p>
                 </div>
             </div>
             <iframe id="pdf-iframe" class="w-full h-full hidden" title="PDF Viewer"></iframe>
@@ -108,7 +108,7 @@
                 </div>
                 <div>
                     <h2 class="text-sm font-semibold text-slate-800">Accessibility Agent</h2>
-                    <p class="text-xs text-slate-500">Sirf uploaded docs par mabni (grounded) hai</p>
+                    <p class="text-xs text-slate-500">Grounded strictly in uploaded docs</p>
                 </div>
             </div>
 
@@ -119,7 +119,7 @@
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-blue-600"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/></svg>
                     </div>
                     <div class="bg-slate-50 border border-slate-100 rounded-2xl rounded-tl-none p-3 text-sm text-slate-700 md3-shadow">
-                        Namaste! Main aapka AI Auditor hoon. Kripya apne venue ke plans, policy PDFs, ya pichle audit reports upload karein. Upload hone ke baad, mujhse accessibility evaluation ke liye sawal puchein.
+                        Hello! I am your AI Auditor. Please upload your venue's structural plans, policy PDFs, or previous audit reports. Once loaded, ask me for an accessibility evaluation.
                     </div>
                 </div>
             </div>
@@ -130,7 +130,7 @@
                         id="chat-input" 
                         rows="2"
                         class="w-full bg-slate-50 border border-slate-300 rounded-2xl pl-4 pr-12 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none transition-shadow"
-                        placeholder="Evaluation ya specific sawal puchein..."
+                        placeholder="Ask for an evaluation or specific query..."
                         onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); handleChatSubmit(event); }"
                     ></textarea>
                     <button type="submit" id="send-btn" class="absolute right-2 bottom-2 p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
@@ -142,15 +142,15 @@
     </main>
 
     <script>
-        // System aur State Variables
+        // System and State Variables
         const apiKey = ""; // System requirement.
         let extractedKnowledgeBase = []; 
         let uploadedFiles = {};
         
-        // PDF.js worker ko initialize karein
+        // Initialize PDF.js worker
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-        // API Key changes ko listen karein taaki indicator update ho sake
+        // Listen for API Key changes to update indicator
         document.getElementById('api-key-input').addEventListener('input', function(e) {
             const statusIndicator = document.getElementById('api-status');
             if (e.target.value.trim().length > 10) {
@@ -160,11 +160,11 @@
             } else {
                 statusIndicator.classList.remove('bg-green-500', 'bg-red-500');
                 statusIndicator.classList.add('bg-slate-300');
-                statusIndicator.title = "API Disconnected hai";
+                statusIndicator.title = "API Disconnected";
             }
         });
 
-        // File uploads ko handle karein aur har page se text extract karein
+        // Handle file uploads & extract text per page
         async function handleFileUpload(event) {
             const files = event.target.files;
             if (!files.length) return;
@@ -194,7 +194,7 @@
                 `;
                 docList.appendChild(docElement);
 
-                // PDF.js ke zariye Text Extract karein (Client-Side RAG Ingestion)
+                // Extract Text via PDF.js (Client-Side RAG Ingestion)
                 try {
                     const arrayBuffer = await file.arrayBuffer();
                     const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
@@ -206,7 +206,7 @@
                         const pageText = textContent.items.map(item => item.str).join(' ');
                         
                         if (pageText.trim()) {
-                            // Page-level metadata maintain karein
+                            // Maintain page-level metadata
                             extractedKnowledgeBase.push({
                                 filename: file.name,
                                 page: i,
@@ -216,22 +216,22 @@
                         }
                     }
                     
-                    document.getElementById(`${fileId}-status`).innerText = `${pdf.numPages} pages process ho gaye`;
+                    document.getElementById(`${fileId}-status`).innerText = `Processed ${pdf.numPages} pages`;
                     document.getElementById(`${fileId}-status`).classList.add('text-green-600');
                     
-                    // Pehle uploaded doc ka auto preview karein
+                    // Auto preview first uploaded doc
                     if(Object.keys(uploadedFiles).length === 1) {
                         previewPDF(fileId);
                     }
 
                 } catch (err) {
                     console.error("PDF Extraction Error:", err);
-                    document.getElementById(`${fileId}-status`).innerText = "Extraction fail ho gaya";
+                    document.getElementById(`${fileId}-status`).innerText = "Extraction failed";
                     document.getElementById(`${fileId}-status`).classList.add('text-red-500');
                 }
             }
             
-            // Input reset karein taaki same file dobara upload ho sake
+            // Reset input so same file can be uploaded again if needed
             event.target.value = '';
         }
 
@@ -310,11 +310,11 @@
 
             if (!query) return;
             if (!activeKey) {
-                alert("Aage badhne ke liye kripya valid Gemini API Key darj karein.");
+                alert("Please enter a valid Gemini API Key to proceed.");
                 return;
             }
 
-            // Processing ke dauran input disable karein
+            // Disable input while processing
             input.value = '';
             input.disabled = true;
             document.getElementById('send-btn').disabled = true;
@@ -322,12 +322,12 @@
             appendMessage('user', query);
             createLoadingIndicator();
 
-            // Requested Agentic Behavior ko enforce karne ke liye System Prompt banayein
+            // Construct System Prompt enforcing the requested Agentic Behavior
             const framework = document.getElementById('framework-select').value;
             
-            // Extracted KB ko strictly format karein
+            // Format extracted KB strictly 
             let knowledgeBaseText = extractedKnowledgeBase.length === 0 
-                ? "KOI DOCUMENT UPLOAD NAHI HUA HAI. User ko batayein ki pehle documents upload karna zaroori hai."
+                ? "NO DOCUMENTS UPLOADED. Inform the user they must upload documents first."
                 : extractedKnowledgeBase.map(chunk => `[Source: ${chunk.filename}, Page ${chunk.page}]\n${chunk.text}\n---\n`).join('\n');
 
             const systemPrompt = `
@@ -343,7 +343,6 @@ CRITICAL RULES YOU MUST FOLLOW EXACTLY:
    - Cognitive Accessibility
    - Digital Accessibility
 4. PROACTIVE SITE INSPECTION (AGENTIC BEHAVIOR): At the end of every evaluation response, you MUST automatically generate a section titled "Unanswered Audit Questions requiring site inspection". In this section, list specific, actionable questions regarding accessibility data that is missing from the provided documents but is critical for a complete audit under the selected framework.
-5. LANGUAGE: Please generate your response in Hindi written in Latin script (Hinglish).
 
 DOCUMENT KNOWLEDGE BASE:
 ${knowledgeBaseText}
@@ -355,7 +354,7 @@ ${knowledgeBaseText}
             };
 
             try {
-                // Exponential backoff implement karein
+                // Implement exponential backoff as requested
                 const maxRetries = 5;
                 const delays = [1000, 2000, 4000, 8000, 16000];
                 let attempt = 0;
@@ -372,7 +371,7 @@ ${knowledgeBaseText}
                         });
                         
                         if (!response.ok) {
-                            // Google dwara generate kiya gaya specific error message extract karein 
+                            // Extract the highly specific error message generated by Google 
                             let errorMsg = `HTTP Error ${response.status}`;
                             try {
                                 const errorData = await response.json();
@@ -390,7 +389,7 @@ ${knowledgeBaseText}
                         break; // Success
                     } catch (error) {
                         attempt++;
-                        console.warn(`API attempt ${attempt} fail ho gaya: ${error.message}`);
+                        console.warn(`API attempt ${attempt} failed: ${error.message}`);
                         if (attempt >= maxRetries) throw error;
                         await new Promise(resolve => setTimeout(resolve, delays[attempt - 1]));
                     }
@@ -402,14 +401,14 @@ ${knowledgeBaseText}
                     const responseText = data.candidates[0].content.parts[0].text;
                     appendMessage('ai', responseText);
                 } else {
-                    appendMessage('ai', "AI agent ke response ko parse karne mein error aaya. Kripya dobara koshish karein.");
+                    appendMessage('ai', "Error parsing the response from the AI agent. Please try again.");
                 }
 
             } catch (error) {
                 removeLoadingIndicator();
-                appendMessage('ai', `**Connection Error:** ${error.message}\nKripya check karein ki aapki API key sahi hai aur network connectivity available hai.`);
+                appendMessage('ai', `**Connection Error:** ${error.message}\nPlease ensure your API key is correct and you have network connectivity.`);
                 
-                // Failure hone par red indicator show karein
+                // Show red indicator on failure
                 const statusIndicator = document.getElementById('api-status');
                 statusIndicator.classList.remove('bg-green-500', 'bg-slate-300');
                 statusIndicator.classList.add('bg-red-500');
